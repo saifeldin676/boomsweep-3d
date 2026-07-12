@@ -6,10 +6,10 @@
 <meta name="theme-color" content="#6d5efc">
 <title>Boomsweep 3D — Prototype</title>
 <style>
-  /* Aurora theme (from the live Boomsweep app) */
+  /* Neon (dark) theme — one of the live Boomsweep themes; best for showing 3D depth */
   :root{
-    --bg:#eef0ff; --bg2:#f7eeff; --panel:#ffffff; --ink:#26244a; --muted:#8b8db0;
-    --line:#e7e6fb; --accent:#6d5efc; --accent2:#8b5cf6; --accent-soft:#ebe8ff; --flag:#ff4d79;
+    --bg:#0c0f1f; --bg2:#15102b; --panel:#181c30; --ink:#eef0ff; --muted:#9aa1c5;
+    --line:#2a2f4c; --accent:#7c83ff; --accent2:#c45cff; --accent-soft:#23264a; --flag:#ff5d8f;
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; height:100%; overflow:hidden; color:var(--ink);
@@ -76,11 +76,11 @@
 
   /* ============ Theme colors ============ */
   const COL = {
-    bgTop:0xeef0ff, ground:0xe7e6fb, platform:0xdfdcfb,
-    covered:0xdcd9fb, coveredTop:0xefedff, revealed:0xf7f5ff, revealedEdge:0xe7e6fb,
-    accent:0x6d5efc, flag:0xff4d79, mine:0x2a2740, hit:0xff4d79,
+    ground:0x090c18, platform:0x1b2244,
+    covered:0x2e3560, coveredTop:0x3c4578, revealed:0x141931, revealedEdge:0x2a2f4c,
+    accent:0x7c83ff, flag:0xff5d8f, mine:0x0a0d1a, hit:0xff4d79,
   };
-  const NUMCOL = ['', '#5b5bf0','#11b886','#ff4d6d','#a855f7','#f59e0b','#06b6d4','#4b4b6b','#9aa1c5'];
+  const NUMCOL = ['', '#8ea6ff','#3ee0a3','#ff7a9c','#c98bff','#ffb454','#3ad8e0','#cfd4f0','#aab0d4'];
 
   /* ============ Config / game state (mirrors Boomsweep logic) ============ */
   const ROWS=9, COLS=9, MINES=10, CELL=1.0, GAP=0.08;
@@ -94,14 +94,15 @@
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   if ('outputEncoding' in renderer) renderer.outputEncoding = THREE.sRGBEncoding;
+  if ('toneMapping' in renderer){ renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15; }
   app.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
 
-  const camera = new THREE.PerspectiveCamera(42, window.innerWidth/window.innerHeight, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(40, window.innerWidth/window.innerHeight, 0.1, 100);
 
   // Spherical camera controls (lightweight, no external deps)
-  const cam = { theta: Math.PI*0.5, phi: 0.72, radius: 15, target: new THREE.Vector3(0,0,0) };
+  const cam = { theta: Math.PI*0.5, phi: 0.64, radius: 15.5, target: new THREE.Vector3(0,0,0) };
   const camDefault = { theta: cam.theta, phi: cam.phi, radius: cam.radius };
   function updateCamera(){
     const r = cam.radius, sp = Math.sin(cam.phi), cp = Math.cos(cam.phi);
@@ -114,9 +115,9 @@
   }
 
   /* ---- lights ---- */
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xcdbdf0, 0.75));
-  const amb = new THREE.AmbientLight(0xffffff, 0.35); scene.add(amb);
-  const key = new THREE.DirectionalLight(0xffffff, 1.15);
+  scene.add(new THREE.HemisphereLight(0x9fb0ff, 0x0a0d1a, 0.5));
+  const amb = new THREE.AmbientLight(0xffffff, 0.16); scene.add(amb);
+  const key = new THREE.DirectionalLight(0xffffff, 1.7);
   key.position.set(6, 12, 5);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -124,7 +125,7 @@
   key.shadow.camera.left=-10; key.shadow.camera.right=10; key.shadow.camera.top=10; key.shadow.camera.bottom=-10;
   key.shadow.bias = -0.0005; key.shadow.radius = 4;
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0x9b8bff, 0.35); rim.position.set(-6,5,-6); scene.add(rim);
+  const rim = new THREE.DirectionalLight(0x8b7bff, 0.6); rim.position.set(-6,5,-6); scene.add(rim);
 
   /* ---- board group + platform ---- */
   const board = new THREE.Group(); scene.add(board);
@@ -172,7 +173,7 @@
     for (let r=0;r<ROWS;r++){
       const row=[];
       for (let c=0;c<COLS;c++){
-        const mat = new THREE.MeshStandardMaterial({ color:COL.covered, roughness:0.55, metalness:0.0 });
+        const mat = new THREE.MeshStandardMaterial({ color:COL.covered, roughness:0.5, metalness:0.08, emissive:0x1c2450, emissiveIntensity:0.55 });
         const mesh = new THREE.Mesh(tileGeo, mat);
         mesh.position.set(tileX(c), 0, tileZ(r));
         mesh.castShadow = true; mesh.receiveShadow = true;
@@ -245,7 +246,7 @@
   function paintReveal(r,c){
     const t=tiles[r][c], cell=grid[r][c];
     t.mesh.material.color.setHex(COL.revealed);
-    t.mesh.material.roughness = 0.85;
+    t.mesh.material.roughness = 0.9; t.mesh.material.emissiveIntensity = 0;
     if (t.cap) t.cap.material.color.setHex(COL.revealed);
     sink(t.mesh, -0.2, 220);
     if (cell.count>0 && !cell.mine){
