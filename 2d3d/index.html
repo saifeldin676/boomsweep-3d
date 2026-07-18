@@ -357,12 +357,21 @@ let replayMoves=[], replayStartT=0, replayMines=null;
 function bestKey(){ return diff==='custom' ? `custom_${rows}x${cols}_${mines}` : diff; }
 
 /* ============ Sound ============ */
-let audioCtx=null;
+let audioCtx=null, _audioUnlocked=false;
+function ensureAudio(){
+  try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; }
+  if(audioCtx && audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+function unlockAudio(){
+  const c=ensureAudio(); if(!c||_audioUnlocked) return;
+  try{ const b=c.createBuffer(1,1,22050), s=c.createBufferSource(); s.buffer=b; s.connect(c.destination); s.start(0); _audioUnlocked=true; }catch(e){}
+}
+['pointerdown','touchend','mousedown','keydown'].forEach(function(ev){ window.addEventListener(ev, unlockAudio, {passive:true}); });
 function beep(freq,dur=0.08,type='sine',vol=0.12){
   if(!soundOn) return;
   try{
-    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-    if(audioCtx.state==='suspended') audioCtx.resume();
+    if(!ensureAudio()) return;
     const o=audioCtx.createOscillator(), g=audioCtx.createGain();
     o.type=type; o.frequency.value=freq;
     g.gain.setValueAtTime(vol,audioCtx.currentTime);
@@ -733,8 +742,7 @@ function ddBurst(x,y,z){
   E.push({ t0:performance.now(), dur:760, ease:t=>t, onUpdate:()=>{ const dt=0.016; parts.forEach(pp=>{ pp.vy-=9.2*dt; pp.mesh.position.x+=pp.vx*dt; pp.mesh.position.y+=pp.vy*dt; pp.mesh.position.z+=pp.vz*dt; }); }, onDone:()=>parts.forEach(pp=>B.remove(pp.mesh)), done:false });
 }
 function ddBoom(){ if(!soundOn) return; try{
-  if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-  if(audioCtx.state==='suspended') audioCtx.resume();
+    if(!ensureAudio()) return;
   const t=audioCtx.currentTime, o=audioCtx.createOscillator(), og=audioCtx.createGain();
   o.type='sine'; o.frequency.setValueAtTime(110,t); o.frequency.exponentialRampToValueAtTime(40,t+0.5);
   og.gain.setValueAtTime(0.0001,t); og.gain.exponentialRampToValueAtTime(0.4,t+0.03); og.gain.exponentialRampToValueAtTime(0.0001,t+0.7);
